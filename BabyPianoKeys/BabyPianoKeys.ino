@@ -212,6 +212,10 @@ int  menuLevel = 0; // 0=main  1=time submenu  2=diff submenu
 // Countdown state
 int  countdownVal = 3;
 
+// Sequence-phase blink state (shared by updateCountdown, updateShowSequence, updateSuccess)
+bool          seqBlinkOn = false;
+unsigned long seqBlinkMs = 0;
+
 // Shared game clock — set once when the countdown ends;
 // used by SHOW_SEQUENCE, WAIT_INPUT, and SUCCESS to track elapsed time.
 unsigned long gameClockMs = 0;
@@ -846,8 +850,6 @@ void updateCountdown() {
 
 // ── SHOW SEQUENCE ─────────────────────────────────────────────────
 // Blink the current required key for NOTE_DELAY[difficulty] ms; no input.
-static bool seqBlinkOn = false;
-static unsigned long seqBlinkMs = 0;
 
 void updateShowSequence() {
   unsigned long e = millis() - stateMs;
