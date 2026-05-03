@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Baby Piano Keys</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0d0d0d;
+      color: #c8ffc8;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    h1 { color: #00e5ff; font-size: 1.4rem; margin-bottom: 4px; }
+    .subtitle { color: #558b55; font-size: 0.8rem; margin-bottom: 16px; }
+    .card {
+      border: 1px solid #1e5c1e;
+      border-radius: 6px;
+      padding: 14px;
+      margin-bottom: 12px;
+      background: #111a11;
+    }
+    .card h3 { color: #66ff66; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+    .row { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 0; }
+    .lbl { color: #558b55; font-size: 0.82rem; }
+    .val { color: #e8ffe8; font-size: 1rem; font-weight: bold; }
+    .val.state-PLAYING   { color: #00ff7f; }
+    .val.state-FAIL      { color: #ff4444; }
+    .val.state-MENU      { color: #ffd700; }
+    .val.state-COUNTDOWN { color: #ff8c00; }
+    input[type="number"] {
+      background: #0d1a0d; color: #c8ffc8; border: 1px solid #2a6a2a;
+      border-radius: 3px; padding: 5px 8px; width: 100px; font-family: inherit; font-size: 0.9rem;
+    }
+    button {
+      background: #0a3d0a; color: #c8ffc8; border: 1px solid #2a6a2a;
+      border-radius: 4px; padding: 7px 16px; cursor: pointer; font-family: inherit;
+      font-size: 0.85rem; transition: background 0.15s;
+    }
+    button:hover  { background: #1a5c1a; }
+    button.danger { background: #3d0a0a; border-color: #6a1a1a; }
+    button.danger:hover { background: #5c1a1a; }
+    button.primary { background: #0a3d2a; border-color: #1a6a4a; }
+    button.primary:hover { background: #1a5c3a; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    #events {
+      font-size: 0.72rem; height: 140px; overflow-y: scroll;
+      background: #080d08; padding: 8px; border: 1px solid #1a4a1a;
+      border-radius: 3px; line-height: 1.5;
+    }
+    #events .ev { color: #7ab87a; }
+    .status-bar {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.75rem; color: #558b55; margin-bottom: 10px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4444; flex-shrink: 0; }
+    .dot.ok  { background: #00e676; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .score-big { font-size: 2rem; color: #00ff7f; font-weight: bold; }
+    .tickets-val { font-size: 1.3rem; color: #ffd700; }
+    .sep { border: none; border-top: 1px solid #1e3a1e; margin: 8px 0; }
+  </style>
+</head>
+<body>
+
+  <h1>🎹 Baby Piano Keys</h1>
+  <p class="subtitle">ESP32 Mini Piano Arcade — Debug &amp; Control</p>
+
+  <div class="status-bar">
+    <div class="dot" id="conn-dot"></div>
+    <span id="conn-label">Connecting…</span>
+    <span style="margin-left:auto">Auto-refresh: 2 s</span>
+  </div>
+
+  <!-- Live Status -->
+  <div class="card">
+    <h3>Live Status</h3>
+    <div class="grid">
+      <div class="row"><span class="lbl">State</span>     <span class="val" id="s-state">—</span></div>
+      <div class="row"><span class="lbl">Time Left</span> <span class="val" id="s-time">—</span></div>
+      <div class="row"><span class="lbl">Difficulty</span><span class="val" id="s-diff">—</span></div>
+      <div class="row"><span class="lbl">Game Time</span> <span class="val" id="s-gametime">—</span></div>
+      <div class="row"><span class="lbl">Uptime</span>    <span class="val" id="s-uptime">—</span></div>
+      <div class="row"><span class="lbl">Seq Index</span> <span class="val" id="s-seqidx">—</span></div>
+    </div>
+    <hr class="sep">
+    <div style="display:flex; justify-content:space-around; align-items:center; padding:8px 0;">
+      <div style="text-align:center">
+        <div class="lbl" style="font-size:0.75rem">SCORE</div>
+        <div class="score-big" id="s-score">0</div>
+      </div>
+      <div style="text-align:center">
+        <div class="lbl" style="font-size:0.75rem">TICKETS 🎟</div>
+        <div class="tickets-val" id="s-tickets">0</div>
+      </div>
+      <div style="text-align:center">
+        <div class="lbl" style="font-size:0.75rem">BONUS</div>
+        <div class="tickets-val" id="s-bonus">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bonus Control -->
+  <div class="card">
+    <h3>Set Bonus</h3>
+    <div class="btn-row">
+      <input type="number" id="bonus-val" value="0" min="0" max="9999" placeholder="Bonus pts">
+      <button class="primary" onclick="setBonus()">Apply</button>
+    </div>
+  </div>
+
+  <!-- Commands -->
+  <div class="card">
+    <h3>Commands</h3>
+    <div class="btn-row">
+      <button onclick="sendCmd('start')">▶ Start Game</button>
+      <button onclick="sendCmd('stop')">⏹ Stop / Menu</button>
+      <button class="danger" onclick="sendCmd('reset')">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- Event Log -->
+  <div class="card">
+    <h3>Recent Events</h3>
+    <div id="events"><span class="ev">Waiting for data…</span></div>
+  </div>
+
+  <script>
+    const DIFF_NAMES = ['Easy', 'Normal', 'Hard'];
+
+    async function fetchStatus() {
+      try {
+        const r = await fetch('/status');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+
+        document.getElementById('conn-dot').className   = 'dot ok';
+        document.getElementById('conn-label').textContent = 'Connected';
+
+        const stateEl = document.getElementById('s-state');
+        stateEl.textContent = d.state;
+        stateEl.className   = 'val state-' + d.state;
+
+        document.getElementById('s-score').textContent   = d.score + (d.bonus ? ' +' + d.bonus : '');
+        document.getElementById('s-tickets').textContent = d.tickets;
+        document.getElementById('s-bonus').textContent   = d.bonus;
+        document.getElementById('s-time').textContent    = d.time_remaining + ' s';
+        document.getElementById('s-gametime').textContent= d.game_time + ' s';
+        document.getElementById('s-diff').textContent    = DIFF_NAMES[d.difficulty] || d.difficulty;
+        document.getElementById('s-seqidx').textContent  = d.seq_index;
+        document.getElementById('s-uptime').textContent  = (d.uptime_ms / 1000).toFixed(0) + ' s';
+
+        document.getElementById('bonus-val').value = d.bonus;
+
+        if (d.events && d.events.length) {
+          const box = document.getElementById('events');
+          box.innerHTML = d.events
+            .map(e => `<div class="ev">${escHtml(e)}</div>`)
+            .join('');
+          box.scrollTop = box.scrollHeight;
+        }
+      } catch (e) {
+        document.getElementById('conn-dot').className    = 'dot';
+        document.getElementById('conn-label').textContent = 'Offline — ' + e.message;
+      }
+    }
+
+    async function setBonus() {
+      const v = parseInt(document.getElementById('bonus-val').value) || 0;
+      try {
+        await fetch('/bonus', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bonus: v })
+        });
+        fetchStatus();
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function sendCmd(cmd) {
+      try {
+        const r = await fetch('/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: cmd })
+        });
+        const d = await r.json();
+        if (!d.ok) alert('Command error: ' + JSON.stringify(d));
+        fetchStatus();
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    fetchStatus();
+    setInterval(fetchStatus, 2000);
+  </script>
+</body>
+</html>
